@@ -23,7 +23,7 @@ def get_arguments():
     args.add_argument(
         '-o','--output',
         type=str,
-        help="Output SAM filename. Default: input file + '.filtered'. E.g. input=mysam.sam output=mysam.filtered.sam"
+        help="Output SAM filename. Default: STDOUT or if --input is defined it adds filtered prior to the file extension. E.g. input=mysam.sam output=mysam.filtered.sam"
     )
     args.add_argument(
         '-r','--rejected',
@@ -32,12 +32,12 @@ def get_arguments():
     )
     args.add_argument(
         '-b','--input_bam',
-        type=str,
+        action='store_true',
         help="Optional: Input is a BAM file. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
     )    
     args.add_argument(
         '-B','--output_bam',
-        type=str,
+        action='store_true',
         help="Optional: Output BAM instead. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
     )    
     args.add_argument(

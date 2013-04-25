@@ -64,3 +64,4 @@ tramp
 .org-id-locations
 *_archive
  
+tmp/

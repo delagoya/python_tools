@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import argparse
 import logging
 import os
-import sys 
+import sys
 import re
 from math import ceil
 import numpy as np
@@ -34,12 +34,12 @@ def get_arguments():
         '-b','--input_bam',
         action='store_true',
         help="Optional: Input is a BAM file. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
-    )    
+    )
     args.add_argument(
         '-B','--output_bam',
         action='store_true',
         help="Optional: Output BAM instead. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
-    )    
+    )
     args.add_argument(
         '--verbose', '-v',
         action='store_true',
@@ -53,7 +53,7 @@ def get_arguments():
     return args.parse_args()
 
 # A regex for grabbing canonical chromosomes from human/mouse
-_RE_CONANICAL_CHR  = re.compile(r'chr[1-9XY]{1,2}$')
+_RE_CONANICAL_CHR  = re.compile(r'chr[0-9XY]{1,2}$')
 
 def setup_logging(args):
     '''Sets up normal and verbose logging'''
@@ -72,6 +72,7 @@ def get_valid_chrs(headers):
     for i,e in enumerate(headers['SQ']):
         if _RE_CONANICAL_CHR.match(e['SN']):
             valid_chrs[i] = True
+    logging.debug("Valid Chromosomes: [{0}]".format(valid_chrs))
     return valid_chrs
 
 def main():
@@ -136,7 +137,7 @@ def main():
                 if valid_written:
                     total_output_tally += 1
                 elif reject_written:
-                    rejected_output_tally += 1 
+                    rejected_output_tally += 1
                     totally_rejected_tally += 1
                 elif entry_rejected and not valid_written and not reject_written:
                     totally_rejected_tally += 1

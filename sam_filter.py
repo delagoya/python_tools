@@ -16,29 +16,19 @@ def get_arguments():
     '''Parses the CLI arguments'''
     args = argparse.ArgumentParser(description="Filters a SAM/BAM alignment file (sorted by read IDs) to canonical chromosomal alignments. Optionally outputs rejected reads to another file.")
     args.add_argument(
-        "-i", "--input",
+        "input",
         type=str,
         help="Input SAM/BAM file for filtering."
     )
     args.add_argument(
-        '-o','--output',
+        'output',
         type=str,
-        help="Output SAM filename. Default: STDOUT or if --input is defined it adds filtered prior to the file extension. E.g. input=mysam.sam output=mysam.filtered.sam"
+        help="Output SAM/BAM filename."
     )
     args.add_argument(
         '-r','--rejected',
         type=str,
-        help="Optional output SAM filename for rejected reads."
-    )
-    args.add_argument(
-        '-b','--input_bam',
-        action='store_true',
-        help="Optional: Input is a BAM file. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
-    )
-    args.add_argument(
-        '-B','--output_bam',
-        action='store_true',
-        help="Optional: Output BAM instead. Useful for STDIN/STDOUT streams. Otherwise this is taken from the filenames for input and output."
+        help="Optional output SAM/BAM filename for rejected reads."
     )
     args.add_argument(
         '--verbose', '-v',

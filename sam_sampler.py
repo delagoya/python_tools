@@ -189,7 +189,8 @@ def main():
     last_tally = 0
     add_last_tally = False
     if output_ratio == 1.0:
-        total_output_tally =  output_all_valid_entries(src,target,valid_chrs)
+        sys.stderr.write("You are trying to output the same number of reads that this file contains. I suggest you just copy the file to the desired output.")
+        exit()
     else:
         for bin_index, bin_size in enumerate(bin_sizes):
             target_tally = int(ceil(bin_size * output_ratio))

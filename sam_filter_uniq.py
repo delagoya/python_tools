@@ -9,7 +9,7 @@ from math import ceil
 import numpy as np
 import pysam
 
-"""Filters a SAM/BAM file, sorted in read ID order, to sequences that only come from the canonical chromosomes. E.g. not the contigs or mitochondial chromosomes. Likely only to work for human and mouse.
+"""Filters a SAM/BAM file, sorted in read ID order, to three SAM/BAM files of unique, non-unique, and unmapped reads.
 """
 
 def get_arguments():
@@ -28,7 +28,7 @@ def get_arguments():
     args.add_argument(
         '-B', '--output-bam',
         action='store_true',
-        help="Output files are BAM format, instead of SAM. E.b. <prefix>.uniq.bam and <prefix>.nuniq.bam"
+        help="Output files are BAM format, instead of SAM. E.b. <prefix>.uniq.bam, <prefix>.nuniq.bam, and <prefix>.unmapped.bam"
     )
     args.add_argument(
         '--verbose', '-v',
@@ -88,32 +88,19 @@ def get_next_alignments(samfile,last_entry):
         last_entry = None
     return (entries,last_entry)
 
-def write_entries(entries,canonical,contig,stats,valid_chrs):
-    rn = None
+def write_entries(entries,samfile,stats=None):
     for entry in entries:
-        # logging.debug(entry)
-        if valid_chrs.has_key(entry.rname):
-            canonical.write(entry)
-            rn = entry.rname
-        elif entry.is_unmapped:
-            # determine is mate is valid
-            if valid_chrs.has_key(entry.rnext):
-                canonical.write(entry)
-            else:
-                contig.write(entry)
-        else:
-            contig.write(entry)
+        # determine is mate is valid
+        samfile.write(entry)
+        if stats:
             stats[entry.rname - 1] += 1
-    if rn:
-        stats[rn - 1 ] += 1
 
-    # logging.debug("E {e}: length={l} paired={p} secondary={s} mapped={m} status={t}".format(
-    #     e=e.qname,
-    #     l=len(entries),
-    #     p=e.is_paired,
-    #     s=e.is_secondary,
-    #     m=e.is_unmapped,
-    #     t=status))
+def write_stats(total_count, stats, stats_log, sam):
+    stats_log.write("Total Fragments\t{0}\n".format(total_count))
+    for i,c in enumerate(stats):
+        stats_log.write("{chr}\t{cnt}\n".format(chr=sam.getrname(i),
+            cnt=c
+        ))
 
 def main():
     args = get_arguments()
@@ -137,22 +124,24 @@ def main():
 
     # Input/output/rejected SAM/BAM files
     src =  pysam.Samfile(args.input,read_mode)
-    uniq = pysam.Samfile(".".join((pf,'uniq',o_ext)),write_mode,template=src)
-    uniq_contig = pysam.Samfile(".".join((pf,'uniq','contig',o_ext)),write_mode,template=src)
+
+    uniq = pysam.Samfile(".".join((pf,'uniq',o_ext)), write_mode, template=src)
     uniq_stats_log = open(args.output_prefix + ".uniq.mapping_stats.txt",'w')
-    nuniq = pysam.Samfile(".".join((pf,'nuniq',o_ext)),write_mode,template=src)
-    nuniq_contig = pysam.Samfile(".".join((pf,'nuniq','contig',o_ext)),write_mode,template=src)
+
+    nuniq = pysam.Samfile(".".join((pf,'nuniq',o_ext)), write_mode, template=src)
     nuniq_stats_log = open(args.output_prefix + ".nuniq.mapping_stats.txt",'w')
 
+    unmapped = pysam.Samfile(".".join((pf,'unmappes',o_ext)),write_mode, template=src)
+
     # Total number of reads output
-    total_uniq = total_unmapped = total_nu =  0
+    total_uniq = total_unmapped = total_nu = 0
     uniq_stats = [0] * len(src.header['SQ'])
     nuniq_stats = [0] * len(src.header['SQ'])
-    valid_chrs = get_valid_chrs(src.header)
 
     # Classic Python iteration using PySAM's fetch() function is
     # **much** slower than using the loop below.
     last_entry = None
+    count = 0
     while True:
         entries, last_entry = get_next_alignments(src,last_entry)
         if not last_entry:
@@ -160,14 +149,18 @@ def main():
         e = entries[0]
         if e.is_unmapped and e.mate_is_unmapped:
             total_unmapped += 1
-            continue
-        map_count = [x for x in e.tags if re.match(r'IH|NH',x[0])][0][1]
-        if map_count > 1:
-            write_entries(entries,nuniq,nuniq_contig,nuniq_stats, valid_chrs)
-            total_nu += 1
+            # may be prudent to write these out to a SAM file as well
+            write_entries(entries,unmapped)
         else:
-            write_entries(entries,uniq,uniq_contig,uniq_stats, valid_chrs)
-            total_uniq += 1
+            map_count = [x for x in e.tags if re.match(r'IH|NH',x[0])][0][1]
+
+            if map_count > 1:
+                write_entries(entries,nuniq,nuniq_stats)
+                total_nu += 1
+            else:
+                write_entries(entries,uniq,uniq_stats)
+                total_uniq += 1
+        count += 1
 
     # write out the stats
     write_stats(total_uniq, uniq_stats,uniq_stats_log, uniq)
@@ -176,19 +169,14 @@ def main():
     src.close()
     uniq.close()
     nuniq.close()
-    uniq_contig.close()
-    nuniq_contig.close()
+    unmapped.close()
+
     uniq_stats_log.close()
     nuniq_stats_log.close()
 
+    logging.info("Number of unique entries: %d\n" % total_uniq)
+    logging.info("Number of non-unique entries: %d\n" % total_nu)
     logging.info("Number of unmapped entries: %d\n" % total_unmapped)
-
-def write_stats(total_count, chr_counts, stats_log, sam):
-    stats_log.write("Total Fragments\t{0}\n".format(total_count))
-    for i,c in enumerate(chr_counts):
-        stats_log.write("{chr}\t{cnt}\n".format(chr=sam.getrname(i),
-            cnt=c
-        ))
 
 if __name__ == '__main__':
     main()
